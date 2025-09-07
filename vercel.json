@@ -6,9 +6,5 @@
   },
   "env": {
     "GEMINI_API_KEY": "GEMINI_API_KEY"
-  },
-  "builds": [
-    { "src": "index.html", "use": "@vercel/static" }
-  ]
+  }
 }
-
