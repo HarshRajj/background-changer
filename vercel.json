@@ -1,10 +1,14 @@
 {
-    "functions": {
-    "api/*.py": {
+  "functions": {
+    "api/generate.py": {
+      "runtime": "python3.11",
       "maxDuration": 10
     }
   },
   "env": {
     "GEMINI_API_KEY": "GEMINI_API_KEY"
-  }
+  },
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" }
+  ]
 }

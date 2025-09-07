@@ -1,0 +1,12 @@
+{
+  "name": "background-changer",
+  "version": "1.0.0",
+  "description": "AI-powered image background changer and meme generator using Gemini Flash 2.5.",
+  "main": "index.html",
+  "scripts": {
+    "start": "echo 'Use Vercel or Flask for backend. Static frontend only.'"
+  },
+  "keywords": ["ai", "image", "background", "meme", "gemini", "vercel"],
+  "author": "",
+  "license": "MIT"
+}
