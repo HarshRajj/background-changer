@@ -1,11 +1,8 @@
 {
   "functions": {
     "api/generate.py": {
-    
+      "runtime": "python3.11",
       "maxDuration": 10
     }
-  },
-  "env": {
-    "GEMINI_API_KEY": "GEMINI_API_KEY"
   }
 }
