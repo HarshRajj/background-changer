@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Booth</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Custom styles for better UI feel */
+        .btn {
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        .image-container {
+            min-height: 256px; /* 64 * 4 */
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.75rem; /* rounded-xl */
+            background-color: #f3f4f6; /* bg-gray-100 */
+        }
+        .image-container img {
+            max-width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 0.5rem; /* rounded-lg */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-4xl bg-white rounded-2xl shadow-xl p-6 md:p-8">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">AI Image Booth</h1>
+            <p class="text-gray-600 mt-2">Upload an image and let Gemini work its magic!</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+            <!-- Left Side: Upload & Controls -->
+            <div class="flex flex-col space-y-6">
+                <!-- Step 1: Upload -->
+                <div>
+                    <h2 class="text-xl font-semibold mb-3 text-gray-700">1. Upload Your Image</h2>
+                    <div class="image-container border-2 border-dashed border-gray-300">
+                        <img id="image-preview" src="https://placehold.co/400x300/e2e8f0/cbd5e0?text=Your+Image+Here" alt="Image preview">
+                    </div>
+                    <label for="image-upload" class="btn w-full text-center mt-4 inline-block bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg cursor-pointer hover:bg-indigo-700">
+                        Select Image
+                    </label>
+                    <input type="file" id="image-upload" class="hidden" accept="image/*">
+                </div>
+
+                <!-- Step 2: Choose Action -->
+                <div>
+                    <h2 class="text-xl font-semibold mb-3 text-gray-700">2. Choose an Effect</h2>
+                    <div class="grid grid-cols-2 gap-3">
+                         <button class="btn action-btn bg-sky-500 text-white py-3 px-2 rounded-lg font-medium" data-option="beach">Beach Day 🏖️</button>
+                         <button class="btn action-btn bg-purple-600 text-white py-3 px-2 rounded-lg font-medium" data-option="cosmic">Cosmic Voyager 🌌</button>
+                         <button class="btn action-btn bg-gray-700 text-white py-3 px-2 rounded-lg font-medium" data-option="cyberpunk">Cyberpunk City 🌃</button>
+                         <button class="btn action-btn bg-orange-500 text-white py-3 px-2 rounded-lg font-medium" data-option="meme">Make it a Meme 😂</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Result -->
+            <div class="flex flex-col space-y-4">
+                 <h2 class="text-xl font-semibold mb-3 text-gray-700">3. Get Your Result</h2>
+                <div id="result-container" class="image-container border border-gray-200 shadow-inner relative">
+                    <img id="result-image" src="https://placehold.co/400x300/e2e8f0/cbd5e0?text=AI+Result" alt="Generated image">
+                    <div id="loader-container" class="absolute inset-0 bg-white bg-opacity-75 flex-col items-center justify-center rounded-xl hidden">
+                        <div class="loader"></div>
+                        <p id="loader-text" class="mt-3 font-medium text-gray-600">Generating magic...</p>
+                    </div>
+                </div>
+                <div id="error-message" class="text-center text-red-600 font-medium"></div>
+                <button id="download-btn" class="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">Download Image</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const imageUpload = document.getElementById('image-upload');
+        const imagePreview = document.getElementById('image-preview');
+        const resultImage = document.getElementById('result-image');
+        const loaderContainer = document.getElementById('loader-container');
+        const loaderText = document.getElementById('loader-text');
+        const errorMessage = document.getElementById('error-message');
+        const actionButtons = document.querySelectorAll('.action-btn');
+        const downloadBtn = document.getElementById('download-btn');
+
+        let uploadedImageBase64 = null;
+        let uploadedMimeType = null;
+        let lastImageBlobUrl = null;
+        
+        // Handle image upload and preview
+        imageUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const fullDataUrl = reader.result;
+                imagePreview.src = fullDataUrl;
+                
+                // Extract mime type and base64 data
+                const parts = fullDataUrl.split(',');
+                const mimeTypePart = parts[0].match(/:(.*?);/);
+                uploadedMimeType = mimeTypePart ? mimeTypePart[1] : 'image/jpeg';
+                uploadedImageBase64 = parts[1];
+
+                errorMessage.textContent = '';
+                actionButtons.forEach(btn => btn.disabled = false);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Add click listeners to action buttons
+        actionButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const option = button.dataset.option;
+                if (uploadedImageBase64 && option) {
+                    generateImage(option, uploadedImageBase64, uploadedMimeType);
+                } else {
+                    displayError("Please upload an image first!");
+                }
+            });
+            button.disabled = true; // Initially disabled until image is uploaded
+        });
+
+        function setUIState(isLoading, task = 'image') {
+            if (isLoading) {
+                loaderContainer.style.display = 'flex';
+                loaderText.textContent = 'Generating magic...';
+                errorMessage.textContent = '';
+                actionButtons.forEach(btn => btn.disabled = true);
+            } else {
+                loaderContainer.style.display = 'none';
+                const isImageUploaded = !!uploadedImageBase64;
+                actionButtons.forEach(btn => btn.disabled = !isImageUploaded); 
+            }
+        }
+        
+        function displayError(message) {
+             errorMessage.textContent = `Error: ${message}`;
+             console.error(message);
+        }
+
+        // Function to call the Vercel API for image generation
+        async function generateImage(option, base64Data, mimeType) {
+            setUIState(true, 'image');
+
+            const backendUrl = "/api/generate";
+
+            // Prepare JSON payload for Vercel function
+            const payload = {
+                option: option,
+                image_data: base64Data,
+                mime_type: mimeType
+            };
+
+            try {
+                const response = await fetch(backendUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Request failed with status ${response.status}: ${errorText}`);
+                }
+                
+                // Check if response is an image
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('image')) {
+                    // Response is an image blob
+                    const imageBlob = await response.blob();
+                    const blobUrl = URL.createObjectURL(imageBlob);
+                    resultImage.src = blobUrl;
+                    lastImageBlobUrl = blobUrl;
+                } else {
+                    // Response might be JSON with error
+                    const result = await response.json();
+                    throw new Error(result.error || "Unknown error occurred");
+                }
+
+            } catch (error) {
+                displayError(error.message || "An unknown error occurred while generating the image.");
+            } finally {
+                setUIState(false);
+            }
+        }
+
+        // Download button handler
+        downloadBtn.addEventListener('click', () => {
+            if (!lastImageBlobUrl) {
+                displayError('No image to download yet!');
+                return;
+            }
+            const a = document.createElement('a');
+            a.href = lastImageBlobUrl;
+            a.download = 'generated-image.jpg';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+    </script>
+</body>
+</html>
+

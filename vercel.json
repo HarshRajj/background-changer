@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "api/generate.py": {
+      "runtime": "python3.11"
+    }
+  },
+  "env": {
+    "GEMINI_API_KEY": "@gemini-api-key"
+  }
+}
